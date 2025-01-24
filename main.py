@@ -39,20 +39,19 @@ async def gitlab_webhook(request: Request):
         project_id = payload.get("project", {}).get("id")
         issue_iid = payload.get("object_attributes", {}).get("iid")
         issue_title = payload.get("object_attributes", {}).get("title")
-        project_url = payload.get("project", {}).get("web_url")
 
         logger.info(
             f"Processing issue: {issue_title} (IID: {issue_iid}) in project ID: {project_id}"
         )
 
-        if not (project_url and issue_iid):
-            logger.error("Missing project_url or issue_iid in payload")
+        if not (project_id and issue_iid):
+            logger.error("Missing project_id or issue_iid in payload")
             raise HTTPException(
-                status_code=400, detail="Missing project_url or issue_iid in payload"
+                status_code=400, detail="Missing project_id or issue_iid in payload"
             )
 
         headers = {"Private-Token": GITLAB_API_TOKEN}
-        labels_url = f"{project_url}/-/labels"
+        labels_url = f"{GITLAB_API_BASE_URL}/projects/{project_id}/labels"
         logger.info(f"Fetching labels from: {labels_url}")
         labels_response = requests.get(labels_url, headers=headers)
         if labels_response.status_code != 200:
@@ -62,7 +61,7 @@ async def gitlab_webhook(request: Request):
 
         labels = [label["name"] for label in labels_response.json()]
 
-        comment_url = f"{project_url}/-/issues/{issue_iid}/notes"
+        comment_url = f"{GITLAB_API_BASE_URL}/projects/{project_id}/issues/{issue_iid}/notes"
         comment_data = {
             "body": f"Hello! Here are the labels available in this project: {', '.join(labels)}"
         }
